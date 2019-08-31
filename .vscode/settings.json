@@ -1,0 +1,8 @@
+{
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    // "lldb.adapterType": "native",
+    // "lldb.displayFormat": "auto",
+    "lldb.showDisassembly": "never",
+    // "lldb.dereferencePointers": true
+}
