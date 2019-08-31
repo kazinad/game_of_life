@@ -20,9 +20,9 @@ impl Universe {
     pub fn tick(&mut self) -> Result<(), BoundsError> {
         self.current.set_random(true)?;
         let current = &self.current;
-        for (x, y) in current.iter() {
+        for (x, y, alive) in current.iter() {
             self.next
-                .set(x, y, survive(current.get(x, y)?, current.neighbours(x, y)?))?;
+                .set(x, y, survive(alive, current.neighbours(x, y)?))?;
         }
         std::mem::swap(&mut self.current, &mut self.next);
         Ok(())

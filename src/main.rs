@@ -15,8 +15,8 @@ pub fn update_screen(buff: &mut String, top: String, cell_grid: &CellGrid) -> Re
     buff.clear();
     buff.push_str(&top);
     buff.push_str("\n");
-    for (x, y) in cell_grid.iter() {
-        buff.push(if cell_grid.get(x, y)? { '®' } else { ' ' });
+    for (_, _, alive) in cell_grid.iter() {
+        buff.push(if alive { '®' } else { ' ' });
     }
     Ok(())
 }

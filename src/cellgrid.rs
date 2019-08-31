@@ -145,13 +145,17 @@ impl CellGridIterator<'_> {
 }
 
 impl Iterator for CellGridIterator<'_> {
-    type Item = (usize, usize);
+    type Item = (usize, usize, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.x < self.cell_grid.width && self.y < self.cell_grid.height {
-            let result = (self.x, self.y);
+            let pos = (self.x, self.y);
             self.step();
-            return Some(result);
+
+            match self.cell_grid.get(pos.0, pos.1) {
+                Ok(b) => return Some((pos.0, pos.1, b)),
+                Err(_) => return None,
+            }
         }
         None
     }
