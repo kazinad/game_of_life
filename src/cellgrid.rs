@@ -57,7 +57,7 @@ impl CellGrid {
         })
     }
 
-    pub fn get(&self, x: usize, y: usize) -> Result<bool, BoundsError> {
+    fn get(&self, x: usize, y: usize) -> Result<bool, BoundsError> {
         let index = self.index(x, y)?;
         let cell = self.cells[index.cell];
         let bit = cell & index.bit_mask;
@@ -76,7 +76,7 @@ impl CellGrid {
         Ok(())
     }
 
-    pub fn neighbours(&self, x: usize, y: usize) -> Result<u8, BoundsError> {
+    fn neighbours(&self, x: usize, y: usize) -> Result<u8, BoundsError> {
         let mut result = 0u8;
         for dy in -1..=1 {
             let b = add(y, dy, self.height);
