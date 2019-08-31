@@ -1,5 +1,5 @@
 mod cellgrid;
-use cellgrid::{BoundsError, CellGrid};
+use cellgrid::BoundsError;
 use std::io::{Error, ErrorKind, Result};
 
 impl From<BoundsError> for Error {
@@ -11,41 +11,26 @@ impl From<BoundsError> for Error {
     }
 }
 
-pub fn update_screen(buff: &mut String, top: String, cell_grid: &CellGrid) -> Result<()> {
-    buff.clear();
-    buff.push_str(&top);
-    buff.push_str("\n");
-    for (_, _, alive) in cell_grid.iter() {
-        buff.push(if alive { '®' } else { ' ' });
-    }
-    Ok(())
-}
-
-fn get_size() -> (usize, usize) {
-    if let Some((w, h)) = term_size::dimensions_stdout() {
-        (w, h)
-    } else {
-        (40, 20)
-    }
-}
-
 mod frame_counter;
+mod screen;
 mod universe;
 use frame_counter::FrameCounter;
+use screen::Screen;
 use universe::Universe;
 
-static CLEAR_SCREEN: &str = "\x1B[3J";
-static MOVE_CURSOR_TOP_LEFT: &str = "\x1B[H";
-
 fn main() -> Result<()> {
-    print!("{}", CLEAR_SCREEN);
-    let size = get_size();
-    let mut universe = Universe::new(size.0, size.1 - 1)?;
-    let mut screen = String::new();
+    let (width, height) = Screen::get_size();
+    let mut universe = Universe::new(width, height - 1)?;
+    let mut screen = Screen::new();
     let mut frame_counter = FrameCounter::new();
     loop {
-        update_screen(&mut screen, frame_counter.as_string(), universe.current())?;
-        print!("{}{}", screen, MOVE_CURSOR_TOP_LEFT);
+        screen.update(|buff| {
+            buff.push_str(frame_counter.as_string().as_str());
+            buff.push_str("\n");
+            for (_, _, alive) in universe.current().iter() {
+                buff.push(if alive { '®' } else { ' ' });
+            }
+        });
         universe.tick()?;
         frame_counter.step();
     }

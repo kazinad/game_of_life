@@ -151,9 +151,8 @@ impl Iterator for CellGridIterator<'_> {
         if self.x < self.cell_grid.width && self.y < self.cell_grid.height {
             let pos = (self.x, self.y);
             self.step();
-
             match self.cell_grid.get(pos.0, pos.1) {
-                Ok(b) => return Some((pos.0, pos.1, b)),
+                Ok(alive) => return Some((pos.0, pos.1, alive)),
                 Err(_) => return None,
             }
         }
