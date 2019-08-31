@@ -19,14 +19,16 @@ use screen::Screen;
 use universe::Universe;
 
 fn main() -> Result<()> {
-    let (width, height) = Screen::get_size();
-    let mut universe = Universe::new(width, height - 1)?;
+    let mut universe = {
+        let (width, height) = Screen::get_size();
+        Universe::new(width, height - 1)?
+    };
     let mut screen = Screen::new();
     let mut frame_counter = FrameCounter::new();
     loop {
         screen.update(|buff| {
             buff.push_str(frame_counter.as_string().as_str());
-            buff.push_str("\n");
+            buff.push('\n');
             for (_, _, alive) in universe.current().iter() {
                 buff.push(if alive { '®' } else { ' ' });
             }
