@@ -106,6 +106,14 @@ impl CellGrid {
             cell_grid: self,
         }
     }
+
+    pub fn iter_with_neighbours(&self) -> CellGridWithNeigboursIterator {
+        CellGridWithNeigboursIterator {
+            x: 0,
+            y: 0,
+            cell_grid: self,
+        }
+    }
 }
 
 fn add(n: usize, dn: isize, max: usize) -> usize {
@@ -149,10 +157,45 @@ impl Iterator for CellGridIterator<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.x < self.cell_grid.width && self.y < self.cell_grid.height {
-            let pos = (self.x, self.y);
+            let (x, y) = (self.x, self.y);
             self.step();
-            match self.cell_grid.get(pos.0, pos.1) {
-                Ok(alive) => return Some((pos.0, pos.1, alive)),
+            match self.cell_grid.get(x, y) {
+                Ok(alive) => return Some((x, y, alive)),
+                Err(_) => return None,
+            }
+        }
+        None
+    }
+}
+
+pub struct CellGridWithNeigboursIterator<'a> {
+    x: usize,
+    y: usize,
+    cell_grid: &'a CellGrid,
+}
+
+impl CellGridWithNeigboursIterator<'_> {
+    fn step(&mut self) {
+        self.x += 1;
+        if self.x >= self.cell_grid.width {
+            self.y += 1;
+            self.x = 0;
+        }
+    }
+}
+
+impl Iterator for CellGridWithNeigboursIterator<'_> {
+    type Item = (usize, usize, bool, u8);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.x < self.cell_grid.width && self.y < self.cell_grid.height {
+            let (x, y) = (self.x, self.y);
+            self.step();
+            match self.cell_grid.get(x, y) {
+                Ok(alive) => match self.cell_grid.neighbours(x, y) {
+                    Ok(neighbours) => return Some((x, y, alive, neighbours)),
+                    Err(_) => return None,
+                },
                 Err(_) => return None,
             }
         }
