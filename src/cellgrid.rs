@@ -1,7 +1,9 @@
+type CellType = usize;
+
 pub struct CellGrid {
     width: usize,
     height: usize,
-    cells: Vec<usize>,
+    cells: Vec<CellType>,
 }
 
 #[derive(Debug)]
@@ -17,10 +19,10 @@ pub struct BoundsError {
 
 struct BitIndex {
     cell: usize,
-    bit_mask: usize,
+    bit_mask: CellType,
 }
 
-static BITS_PER_CELLS: usize = std::mem::size_of::<usize>() * 8;
+static BITS_PER_CELLS: usize = std::mem::size_of::<CellType>() * 8;
 
 use rand::prelude::*;
 
@@ -65,7 +67,7 @@ impl CellGrid {
         Ok(bit != 0)
     }
 
-    pub fn set(&mut self, x: usize, y: usize, bit: bool) -> Result<(), BoundsError> {
+    fn set(&mut self, x: usize, y: usize, bit: bool) -> Result<(), BoundsError> {
         let index = self.index(x, y)?;
         let mut cell = self.cells[index.cell];
         if bit {
@@ -165,7 +167,7 @@ impl Iterator for CellGridIterator<'_> {
     }
 }
 
-// -- slices
+// -- slice
 
 impl CellGrid {
     pub fn split_mut(&mut self, slices: usize) -> Vec<CellGridSlice> {
@@ -207,19 +209,10 @@ pub struct CellGridSlice<'a> {
     len: usize,
     width: usize,
     height: usize,
-    cells: &'a mut [usize],
+    cells: &'a mut [CellType],
 }
 
 impl CellGridSlice<'_> {
-    pub fn iter(&self) -> CellGridSliceIterator {
-        CellGridSliceIterator {
-            current: 0,
-            offset: self.offset,
-            len: self.len,
-            width: self.width,
-        }
-    }
-
     fn index(&self, x: usize, y: usize) -> Result<BitIndex, BoundsError> {
         if x >= self.width || y >= self.height {
             return Err(BoundsError {
@@ -244,6 +237,19 @@ impl CellGridSlice<'_> {
         }
         self.cells[index.cell] = cell;
         Ok(())
+    }
+}
+
+// slice iterator
+
+impl CellGridSlice<'_> {
+    pub fn iter(&self) -> CellGridSliceIterator {
+        CellGridSliceIterator {
+            current: 0,
+            offset: self.offset,
+            len: self.len,
+            width: self.width,
+        }
     }
 }
 
