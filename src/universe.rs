@@ -19,9 +19,28 @@ impl Universe {
 
     pub fn tick(&mut self) -> Result<(), BoundsError> {
         self.current.set_random(true)?;
-        for (x, y, alive, neighbours) in self.current.iter_with_neighbours() {
-            self.next.set(x, y, survive(alive, neighbours))?;
-        }
+        let current = &self.current;
+        let mut slices = self.next.split_mut(num_cpus::get());
+        let _ = crossbeam::scope(|scope| {
+            let threads: Vec<_> = slices
+                .iter_mut()
+                .map(|slice| {
+                    scope.spawn(move |_| -> Result<(), BoundsError> {
+                        for (x, y) in slice.iter() {
+                            let alive = current.get(x, y)?;
+                            let neighbours = current.neighbours(x, y)?;
+                            slice.set(x, y, survive(alive, neighbours))?;
+                        }
+                        Ok(())
+                    })
+                })
+                .collect();
+
+            let _ = threads
+                .into_iter()
+                .map(|thread| thread.join().unwrap().unwrap())
+                .collect::<()>();
+        });
         std::mem::swap(&mut self.current, &mut self.next);
         Ok(())
     }

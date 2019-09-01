@@ -10,6 +10,7 @@ pub enum ErrorKind {
     PositionError,
 }
 
+#[derive(Debug)]
 pub struct BoundsError {
     pub kind: ErrorKind,
 }
@@ -57,7 +58,7 @@ impl CellGrid {
         })
     }
 
-    fn get(&self, x: usize, y: usize) -> Result<bool, BoundsError> {
+    pub fn get(&self, x: usize, y: usize) -> Result<bool, BoundsError> {
         let index = self.index(x, y)?;
         let cell = self.cells[index.cell];
         let bit = cell & index.bit_mask;
@@ -76,7 +77,7 @@ impl CellGrid {
         Ok(())
     }
 
-    fn neighbours(&self, x: usize, y: usize) -> Result<u8, BoundsError> {
+    pub fn neighbours(&self, x: usize, y: usize) -> Result<u8, BoundsError> {
         let mut result = 0u8;
         for dy in -1..=1 {
             let b = add(y, dy, self.height);
@@ -107,12 +108,103 @@ impl CellGrid {
         }
     }
 
-    pub fn iter_with_neighbours(&self) -> CellGridWithNeigboursIterator {
-        CellGridWithNeigboursIterator {
-            x: 0,
-            y: 0,
-            cell_grid: self,
+    pub fn split_mut(&mut self, slices: usize) -> Vec<CellGridSlice> {
+        let mut result = Vec::with_capacity(slices);
+        let cells_len = self.cells.len();
+        let mut chunk_size = cells_len / slices;
+        if cells_len % slices > 0 {
+            chunk_size += 1;
+        };
+        let mut offset = 0;
+        let mut cells_bits = self.width * self.height;
+        let chunk_bits = chunk_size * BITS_PER_CELLS;
+        for group in self.cells.chunks_mut(chunk_size) {
+            result.push(CellGridSlice {
+                offset: offset,
+                len: {
+                    if cells_bits < chunk_bits {
+                        cells_bits
+                    } else {
+                        chunk_bits
+                    }
+                },
+                width: self.width,
+                height: self.height,
+                cells: group,
+            });
+            offset += chunk_size * BITS_PER_CELLS;
+            if cells_bits > chunk_bits {
+                cells_bits -= chunk_bits;
+            }
         }
+        result
+    }
+}
+
+#[derive(Debug)]
+pub struct CellGridSlice<'a> {
+    offset: usize,
+    len: usize,
+    width: usize,
+    height: usize,
+    cells: &'a mut [usize],
+}
+
+impl CellGridSlice<'_> {
+    pub fn iter(&mut self) -> CellGridSliceIterator {
+        CellGridSliceIterator {
+            current: 0,
+            offset: self.offset,
+            len: self.len,
+            width: self.width,
+        }
+    }
+
+    fn index(&self, x: usize, y: usize) -> Result<BitIndex, BoundsError> {
+        if x >= self.width || y >= self.height {
+            return Err(BoundsError {
+                kind: ErrorKind::PositionError,
+            });
+        }
+        let bit_index = y * self.width + x - self.offset;
+        let shift = bit_index % BITS_PER_CELLS;
+        let bit_mask = 1 << shift;
+        Ok(BitIndex {
+            cell: bit_index / BITS_PER_CELLS,
+            bit_mask: bit_mask,
+        })
+    }
+    pub fn set(&mut self, x: usize, y: usize, bit: bool) -> Result<(), BoundsError> {
+        let index = self.index(x, y)?;
+        let mut cell = self.cells[index.cell];
+        if bit {
+            cell |= index.bit_mask;
+        } else {
+            cell &= !index.bit_mask;
+        }
+        self.cells[index.cell] = cell;
+        Ok(())
+    }
+}
+
+pub struct CellGridSliceIterator {
+    current: usize,
+    offset: usize,
+    len: usize,
+    width: usize,
+}
+
+impl Iterator for CellGridSliceIterator {
+    type Item = (usize, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let c = self.current;
+        self.current += 1;
+        if c < self.len {
+            let c1 = c + self.offset;
+            return Some((c1 % self.width, c1 / self.width));
+        }
+        None
     }
 }
 
@@ -161,41 +253,6 @@ impl Iterator for CellGridIterator<'_> {
             self.step();
             match self.cell_grid.get(x, y) {
                 Ok(alive) => return Some((x, y, alive)),
-                Err(_) => return None,
-            }
-        }
-        None
-    }
-}
-
-pub struct CellGridWithNeigboursIterator<'a> {
-    x: usize,
-    y: usize,
-    cell_grid: &'a CellGrid,
-}
-
-impl CellGridWithNeigboursIterator<'_> {
-    fn step(&mut self) {
-        self.x += 1;
-        if self.x >= self.cell_grid.width {
-            self.y += 1;
-            self.x = 0;
-        }
-    }
-}
-
-impl Iterator for CellGridWithNeigboursIterator<'_> {
-    type Item = (usize, usize, bool, u8);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.x < self.cell_grid.width && self.y < self.cell_grid.height {
-            let (x, y) = (self.x, self.y);
-            self.step();
-            match self.cell_grid.get(x, y) {
-                Ok(alive) => match self.cell_grid.neighbours(x, y) {
-                    Ok(neighbours) => return Some((x, y, alive, neighbours)),
-                    Err(_) => return None,
-                },
                 Err(_) => return None,
             }
         }
