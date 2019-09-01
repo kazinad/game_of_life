@@ -21,8 +21,8 @@ impl Universe {
         self.current.set_random(true)?;
         let current = &self.current;
         let mut slices = self.next.split_mut(num_cpus::get());
-        let _ = crossbeam::scope(|scope| {
-            let _: Vec<_> = slices
+        let result = crossbeam::scope(|scope| {
+            let threads: Vec<_> = slices
                 .iter_mut()
                 .map(|slice| {
                     scope.spawn(move |_| -> Result<(), BoundsError> {
@@ -35,9 +35,17 @@ impl Universe {
                     })
                 })
                 .collect();
+
+            threads
+                .into_iter()
+                .map(|thread| thread.join().unwrap())
+                .collect::<Result<(), BoundsError>>()
         });
         std::mem::swap(&mut self.current, &mut self.next);
-        Ok(())
+        match result {
+            Ok(ok) => ok,
+            Err(e) => panic!("{:?}", e),
+        }
     }
 }
 
