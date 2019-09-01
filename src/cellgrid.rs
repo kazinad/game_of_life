@@ -99,7 +99,31 @@ impl CellGrid {
         )?;
         Ok(())
     }
+}
 
+fn add(n: usize, dn: isize, max: usize) -> usize {
+    let udn = (dn.abs() as usize) % max;
+    if dn < 0 {
+        if udn > n {
+            return max - udn;
+        }
+        return n - udn;
+    };
+    return (n + udn) % max;
+}
+
+fn cells(width: usize, height: usize) -> usize {
+    let bits_count = width * height;
+    let mut cells = bits_count / BITS_PER_CELLS;
+    if bits_count % BITS_PER_CELLS > 0 {
+        cells += 1
+    }
+    cells
+}
+
+// -- iterator
+
+impl CellGrid {
     pub fn iter(&self) -> CellGridIterator {
         CellGridIterator {
             x: 0,
@@ -107,7 +131,43 @@ impl CellGrid {
             cell_grid: self,
         }
     }
+}
 
+pub struct CellGridIterator<'a> {
+    x: usize,
+    y: usize,
+    cell_grid: &'a CellGrid,
+}
+
+impl CellGridIterator<'_> {
+    fn step(&mut self) {
+        self.x += 1;
+        if self.x >= self.cell_grid.width {
+            self.y += 1;
+            self.x = 0;
+        }
+    }
+}
+
+impl Iterator for CellGridIterator<'_> {
+    type Item = (usize, usize, bool);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.x < self.cell_grid.width && self.y < self.cell_grid.height {
+            let (x, y) = (self.x, self.y);
+            self.step();
+            match self.cell_grid.get(x, y) {
+                Ok(alive) => return Some((x, y, alive)),
+                Err(_) => return None,
+            }
+        }
+        None
+    }
+}
+
+// -- slices
+
+impl CellGrid {
     pub fn split_mut(&mut self, slices: usize) -> Vec<CellGridSlice> {
         let mut result = Vec::with_capacity(slices);
         let cells_len = self.cells.len();
@@ -151,7 +211,7 @@ pub struct CellGridSlice<'a> {
 }
 
 impl CellGridSlice<'_> {
-    pub fn iter(&mut self) -> CellGridSliceIterator {
+    pub fn iter(&self) -> CellGridSliceIterator {
         CellGridSliceIterator {
             current: 0,
             offset: self.offset,
@@ -203,58 +263,6 @@ impl Iterator for CellGridSliceIterator {
         if c < self.len {
             let c1 = c + self.offset;
             return Some((c1 % self.width, c1 / self.width));
-        }
-        None
-    }
-}
-
-fn add(n: usize, dn: isize, max: usize) -> usize {
-    let udn = (dn.abs() as usize) % max;
-    if dn < 0 {
-        if udn > n {
-            return max - udn;
-        }
-        return n - udn;
-    };
-    return (n + udn) % max;
-}
-
-fn cells(width: usize, height: usize) -> usize {
-    let bits_count = width * height;
-    let mut cells = bits_count / BITS_PER_CELLS;
-    if bits_count % BITS_PER_CELLS > 0 {
-        cells += 1
-    }
-    cells
-}
-
-pub struct CellGridIterator<'a> {
-    x: usize,
-    y: usize,
-    cell_grid: &'a CellGrid,
-}
-
-impl CellGridIterator<'_> {
-    fn step(&mut self) {
-        self.x += 1;
-        if self.x >= self.cell_grid.width {
-            self.y += 1;
-            self.x = 0;
-        }
-    }
-}
-
-impl Iterator for CellGridIterator<'_> {
-    type Item = (usize, usize, bool);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.x < self.cell_grid.width && self.y < self.cell_grid.height {
-            let (x, y) = (self.x, self.y);
-            self.step();
-            match self.cell_grid.get(x, y) {
-                Ok(alive) => return Some((x, y, alive)),
-                Err(_) => return None,
-            }
         }
         None
     }
