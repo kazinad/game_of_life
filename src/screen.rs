@@ -19,7 +19,8 @@ impl Screen {
     {
         self.buff.clear();
         fill_buff(&mut self.buff);
-        print!("{}{}", self.buff, MOVE_CURSOR_TOP_LEFT);
+        self.buff.push_str(MOVE_CURSOR_TOP_LEFT);
+        print!("{}", self.buff);
     }
 
     pub fn get_size() -> (usize, usize) {
