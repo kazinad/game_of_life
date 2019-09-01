@@ -1,8 +1,7 @@
 type CellType = usize;
 
 pub struct CellGrid {
-    width: usize,
-    height: usize,
+    indexer: Indexer,
     cells: Vec<CellType>,
 }
 
@@ -22,36 +21,29 @@ struct BitIndex {
     bit_mask: CellType,
 }
 
-static BITS_PER_CELLS: usize = std::mem::size_of::<CellType>() * 8;
+// -- indexer
 
-use rand::prelude::*;
+struct Indexer {
+    width: usize,
+    height: usize,
+    offset: usize,
+}
 
-impl CellGrid {
-    pub fn new(width: usize, height: usize, randomize: bool) -> Result<CellGrid, BoundsError> {
-        if width == 0 || height == 0 {
-            return Err(BoundsError {
-                kind: ErrorKind::SizeError,
-            });
-        };
-        let cells = cells(width, height);
-        let mut result = CellGrid {
+impl Indexer {
+    fn new(width: usize, height: usize, offset: usize) -> Indexer {
+        Indexer {
             width: width,
             height: height,
-            cells: Vec::with_capacity(cells),
-        };
-        for _ in 0..cells {
-            result.cells.push(if randomize { random() } else { 0 });
+            offset: offset,
         }
-        Ok(result)
     }
-
     fn index(&self, x: usize, y: usize) -> Result<BitIndex, BoundsError> {
         if x >= self.width || y >= self.height {
             return Err(BoundsError {
                 kind: ErrorKind::PositionError,
             });
         }
-        let bit_index = y * self.width + x;
+        let bit_index = y * self.width + x - self.offset;
         let shift = bit_index % BITS_PER_CELLS;
         let bit_mask = 1 << shift;
         Ok(BitIndex {
@@ -60,15 +52,81 @@ impl CellGrid {
         })
     }
 
+    fn pos(&self, index: usize) -> (usize, usize) {
+        let c1 = index + self.offset;
+        (c1 % self.width, c1 / self.width)
+    }
+
+    fn add(n: usize, dn: isize, max: usize) -> usize {
+        let udn = (dn.abs() as usize) % max;
+        if dn < 0 {
+            if udn > n {
+                return max - udn;
+            }
+            return n - udn;
+        };
+        return (n + udn) % max;
+    }
+
+    fn add_x(&self, x: usize, dx: isize) -> usize {
+        Indexer::add(x, dx, self.width)
+    }
+
+    fn add_y(&self, y: usize, dy: isize) -> usize {
+        Indexer::add(y, dy, self.height)
+    }
+
+    fn random(&self) -> (usize, usize) {
+        (
+            random::<usize>() % self.width,
+            random::<usize>() % self.height,
+        )
+    }
+
+    fn cells(&self) -> usize {
+        let bits_count = self.width * self.height;
+        let mut cells = bits_count / BITS_PER_CELLS;
+        if bits_count % BITS_PER_CELLS > 0 {
+            cells += 1
+        }
+        cells
+    }
+}
+
+static BITS_PER_CELLS: usize = std::mem::size_of::<CellType>() * 8;
+
+use rand::prelude::*;
+
+// -- CellGrid
+
+impl CellGrid {
+    pub fn new(width: usize, height: usize, randomize: bool) -> Result<CellGrid, BoundsError> {
+        if width == 0 || height == 0 {
+            return Err(BoundsError {
+                kind: ErrorKind::SizeError,
+            });
+        };
+        let indexer = Indexer::new(width, height, 0);
+        let cells = indexer.cells();
+        let mut result = CellGrid {
+            indexer: indexer,
+            cells: Vec::with_capacity(cells),
+        };
+        for _ in 0..cells {
+            result.cells.push(if randomize { random() } else { 0 });
+        }
+        Ok(result)
+    }
+
     pub fn get(&self, x: usize, y: usize) -> Result<bool, BoundsError> {
-        let index = self.index(x, y)?;
+        let index = self.indexer.index(x, y)?;
         let cell = self.cells[index.cell];
         let bit = cell & index.bit_mask;
         Ok(bit != 0)
     }
 
     fn set(&mut self, x: usize, y: usize, bit: bool) -> Result<(), BoundsError> {
-        let index = self.index(x, y)?;
+        let index = self.indexer.index(x, y)?;
         let mut cell = self.cells[index.cell];
         if bit {
             cell |= index.bit_mask;
@@ -82,9 +140,9 @@ impl CellGrid {
     pub fn neighbours(&self, x: usize, y: usize) -> Result<u8, BoundsError> {
         let mut result = 0u8;
         for dy in -1..=1 {
-            let b = add(y, dy, self.height);
+            let b = self.indexer.add_y(y, dy);
             for dx in -1..=1 {
-                let a = add(x, dx, self.width);
+                let a = self.indexer.add_x(x, dx);
                 if !(dy == 0 && dx == 0) && self.get(a, b)? {
                     result += 1;
                 }
@@ -94,33 +152,10 @@ impl CellGrid {
     }
 
     pub fn set_random(&mut self, bit: bool) -> Result<(), BoundsError> {
-        self.set(
-            random::<usize>() % self.width,
-            random::<usize>() % self.height,
-            bit,
-        )?;
+        let (x, y) = self.indexer.random();
+        self.set(x, y, bit)?;
         Ok(())
     }
-}
-
-fn add(n: usize, dn: isize, max: usize) -> usize {
-    let udn = (dn.abs() as usize) % max;
-    if dn < 0 {
-        if udn > n {
-            return max - udn;
-        }
-        return n - udn;
-    };
-    return (n + udn) % max;
-}
-
-fn cells(width: usize, height: usize) -> usize {
-    let bits_count = width * height;
-    let mut cells = bits_count / BITS_PER_CELLS;
-    if bits_count % BITS_PER_CELLS > 0 {
-        cells += 1
-    }
-    cells
 }
 
 // -- iterator
@@ -144,7 +179,7 @@ pub struct CellGridIterator<'a> {
 impl CellGridIterator<'_> {
     fn step(&mut self) {
         self.x += 1;
-        if self.x >= self.cell_grid.width {
+        if self.x >= self.cell_grid.indexer.width {
             self.y += 1;
             self.x = 0;
         }
@@ -155,7 +190,7 @@ impl Iterator for CellGridIterator<'_> {
     type Item = (usize, usize, bool);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.x < self.cell_grid.width && self.y < self.cell_grid.height {
+        if self.x < self.cell_grid.indexer.width && self.y < self.cell_grid.indexer.height {
             let (x, y) = (self.x, self.y);
             self.step();
             match self.cell_grid.get(x, y) {
@@ -178,11 +213,11 @@ impl CellGrid {
             chunk_size += 1;
         };
         let mut offset = 0;
-        let mut cells_bits = self.width * self.height;
+        let mut cells_bits = self.indexer.width * self.indexer.height;
         let chunk_bits = chunk_size * BITS_PER_CELLS;
         for group in self.cells.chunks_mut(chunk_size) {
             result.push(CellGridSlice {
-                offset: offset,
+                indexer: Indexer::new(self.indexer.width, self.indexer.height, offset),
                 len: {
                     if cells_bits < chunk_bits {
                         cells_bits
@@ -190,8 +225,6 @@ impl CellGrid {
                         chunk_bits
                     }
                 },
-                width: self.width,
-                height: self.height,
                 cells: group,
             });
             offset += chunk_size * BITS_PER_CELLS;
@@ -203,32 +236,15 @@ impl CellGrid {
     }
 }
 
-#[derive(Debug)]
 pub struct CellGridSlice<'a> {
-    offset: usize,
+    indexer: Indexer,
     len: usize,
-    width: usize,
-    height: usize,
     cells: &'a mut [CellType],
 }
 
 impl CellGridSlice<'_> {
-    fn index(&self, x: usize, y: usize) -> Result<BitIndex, BoundsError> {
-        if x >= self.width || y >= self.height {
-            return Err(BoundsError {
-                kind: ErrorKind::PositionError,
-            });
-        }
-        let bit_index = y * self.width + x - self.offset;
-        let shift = bit_index % BITS_PER_CELLS;
-        let bit_mask = 1 << shift;
-        Ok(BitIndex {
-            cell: bit_index / BITS_PER_CELLS,
-            bit_mask: bit_mask,
-        })
-    }
     pub fn set(&mut self, x: usize, y: usize, bit: bool) -> Result<(), BoundsError> {
-        let index = self.index(x, y)?;
+        let index = self.indexer.index(x, y)?;
         let mut cell = self.cells[index.cell];
         if bit {
             cell |= index.bit_mask;
@@ -245,19 +261,17 @@ impl CellGridSlice<'_> {
 impl CellGridSlice<'_> {
     pub fn iter(&self) -> CellGridSliceIterator {
         CellGridSliceIterator {
+            indexer: Indexer::new(self.indexer.width, self.indexer.height, self.indexer.offset),
             current: 0,
-            offset: self.offset,
             len: self.len,
-            width: self.width,
         }
     }
 }
 
 pub struct CellGridSliceIterator {
+    indexer: Indexer,
     current: usize,
-    offset: usize,
     len: usize,
-    width: usize,
 }
 
 impl Iterator for CellGridSliceIterator {
@@ -267,8 +281,7 @@ impl Iterator for CellGridSliceIterator {
         let c = self.current;
         self.current += 1;
         if c < self.len {
-            let c1 = c + self.offset;
-            return Some((c1 % self.width, c1 / self.width));
+            return Some(self.indexer.pos(c));
         }
         None
     }
