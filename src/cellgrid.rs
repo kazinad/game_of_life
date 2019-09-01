@@ -1,9 +1,6 @@
-type CellType = usize;
+use rand::prelude::*;
 
-pub struct CellGrid {
-    indexer: Indexer,
-    cells: Vec<CellType>,
-}
+// -- indexer
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -20,8 +17,6 @@ struct BitIndex {
     cell: usize,
     bit_mask: CellType,
 }
-
-// -- indexer
 
 struct Indexer {
     width: usize,
@@ -93,11 +88,16 @@ impl Indexer {
     }
 }
 
+// -- CellGrid
+
+type CellType = usize;
+
 static BITS_PER_CELLS: usize = std::mem::size_of::<CellType>() * 8;
 
-use rand::prelude::*;
-
-// -- CellGrid
+pub struct CellGrid {
+    indexer: Indexer,
+    cells: Vec<CellType>,
+}
 
 impl CellGrid {
     pub fn new(width: usize, height: usize, randomize: bool) -> Result<CellGrid, BoundsError> {
