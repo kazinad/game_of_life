@@ -1,6 +1,4 @@
 use crate::cellgrid::{BoundsError, CellGrid};
-use crate::frame_counter::FrameCounter;
-use crate::screen::Screen;
 
 pub struct Universe {
     current: CellGrid,
@@ -15,25 +13,17 @@ impl Universe {
         })
     }
 
-    pub fn tick(
-        &mut self,
-        screen: &mut Screen,
-        frame_counter: &FrameCounter,
-    ) -> Result<(), BoundsError> {
+    pub fn tick<T>(&mut self, update: T) -> Result<(), BoundsError>
+    where
+        T: FnOnce(&CellGrid) + std::marker::Send,
+    {
         self.current.set_random(true)?;
         let current = &self.current;
         let curr = &self.current;
         let mut slices = self.next.split_mut(num_cpus::get());
         let result = crossbeam::scope(|scope| {
             let th = scope.spawn(move |_| -> Result<(), BoundsError> {
-                screen.update(|buff| {
-                    buff.push_str(frame_counter.as_string().as_str());
-                    buff.push('\n');
-                    for (_, _, alive) in curr.iter() {
-                        buff.push(if alive { '®' } else { ' ' });
-                    }
-                });
-
+                update(curr);
                 Ok(())
             });
 

@@ -26,7 +26,15 @@ fn main() -> Result<()> {
     let mut screen = Screen::new();
     let mut frame_counter = FrameCounter::new();
     loop {
-        universe.tick(&mut screen, &frame_counter)?;
+        universe.tick(|current| {
+            screen.update(|buff| {
+                buff.push_str(frame_counter.as_string().as_str());
+                buff.push('\n');
+                for (_, _, alive) in current.iter() {
+                    buff.push(if alive { '®' } else { ' ' });
+                }
+            });
+        })?;
         frame_counter.step();
     }
 }
