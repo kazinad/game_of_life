@@ -22,7 +22,7 @@ impl Universe {
         let curr = &self.current;
         let mut slices = self.next.split_mut(num_cpus::get());
         let result = crossbeam::scope(|scope| {
-            let th = scope.spawn(move |_| -> Result<(), BoundsError> {
+            let update_thread = scope.spawn(move |_| -> Result<(), BoundsError> {
                 update(curr);
                 Ok(())
             });
@@ -41,7 +41,7 @@ impl Universe {
                 })
                 .collect();
 
-            threads.push(th);
+            threads.push(update_thread);
 
             threads
                 .into_iter()
