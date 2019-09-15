@@ -78,13 +78,13 @@ impl Indexer {
         )
     }
 
-    fn cells(&self) -> usize {
+    fn cell_count(&self) -> usize {
         let bits_count = self.width * self.height;
-        let mut cells = bits_count / BITS_PER_CELLS;
+        let mut cell_count = bits_count / BITS_PER_CELLS;
         if bits_count % BITS_PER_CELLS > 0 {
-            cells += 1
+            cell_count += 1
         }
-        cells
+        cell_count
     }
 }
 
@@ -107,12 +107,12 @@ impl CellGrid {
             });
         };
         let indexer = Indexer::new(width, height, 0);
-        let cells = indexer.cells();
+        let cell_count = indexer.cell_count();
         let mut result = CellGrid {
             indexer: indexer,
-            cells: Vec::with_capacity(cells),
+            cells: Vec::with_capacity(cell_count),
         };
-        for _ in 0..cells {
+        for _ in 0..cell_count {
             result.cells.push(if randomize { random() } else { 0 });
         }
         Ok(result)
