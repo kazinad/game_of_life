@@ -137,13 +137,13 @@ impl CellGrid {
         Ok(())
     }
 
-    pub fn neighbours(&self, x: usize, y: usize) -> Result<u8, BoundsError> {
+    pub fn neighbours(&self, x0: usize, y0: usize) -> Result<u8, BoundsError> {
         let mut result = 0u8;
         for dy in -1..=1 {
-            let b = self.indexer.add_y(y, dy);
+            let y = self.indexer.add_y(y0, dy);
             for dx in -1..=1 {
-                let a = self.indexer.add_x(x, dx);
-                if !(dy == 0 && dx == 0) && self.get(a, b)? {
+                let x = self.indexer.add_x(x0, dx);
+                if !(dy == 0 && dx == 0) && self.get(x, y)? {
                     result += 1;
                 }
             }
