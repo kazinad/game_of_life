@@ -7,16 +7,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'hello_world'",
+            "name": "Debug executable 'game_of_life'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=hello_world",
-                    "--package=hello_world",
+                    "--bin=game_of_life",
+                    "--package=game_of_life",
                     "--manifest-path=Cargo.toml"
                 ],
                 "filter": {
-                    "name": "hello_world",
+                    "name": "game_of_life",
                     "kind": "bin"
                 }
             },
@@ -27,16 +27,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'hello_world'",
+            "name": "Debug unit tests in executable 'game_of_life'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=hello_world",
-                    "--package=hello_world"
+                    "--bin=game_of_life",
+                    "--package=game_of_life"
                 ],
                 "filter": {
-                    "name": "hello_world",
+                    "name": "game_of_life",
                     "kind": "bin"
                 }
             },
