@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 mod cellgrid;
 use cellgrid::BoundsError;
 use std::io::{Error, ErrorKind, Result};

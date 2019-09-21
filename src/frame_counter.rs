@@ -14,7 +14,7 @@ impl FrameCounter {
     }
 
     pub fn as_string(&self) -> String {
-        let fps = self.count / self.beginning.elapsed().as_secs_f32();
+        let fps = self.count as f32 * 1000.0 / self.beginning.elapsed().as_millis() as f32;
         format!("frame: {}, fps: {:.2}", self.count, fps)
     }
 
