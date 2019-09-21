@@ -22,8 +22,8 @@ pub struct BoundsError {
 }
 
 pub(super) struct BitIndex {
-    pub(super) cell: usize,
-    pub(super) bit_mask: CellType,
+    cell: usize,
+    bit_mask: CellType,
 }
 
 impl BitIndex {
