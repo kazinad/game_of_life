@@ -26,6 +26,24 @@ pub(super) struct BitIndex {
     pub(super) bit_mask: CellType,
 }
 
+impl BitIndex {
+    pub(super) fn set(self, cells: &mut [CellType], bit: bool) {
+        let mut cell = cells[self.cell];
+        if bit {
+            cell |= self.bit_mask;
+        } else {
+            cell &= !self.bit_mask;
+        }
+        cells[self.cell] = cell;
+    }
+
+    pub(super) fn get(self, cells: &[CellType]) -> bool {
+        let cell = cells[self.cell];
+        let bit = cell & self.bit_mask;
+        bit != 0
+    }
+}
+
 impl Indexer {
     pub(super) fn new(width: usize, height: usize, offset: usize) -> Indexer {
         Indexer {

@@ -40,14 +40,7 @@ pub struct CellGridSlice<'a> {
 
 impl CellGridSlice<'_> {
     pub fn set(&mut self, x: usize, y: usize, bit: bool) -> Result<(), BoundsError> {
-        let index = self.indexer.index(x, y)?;
-        let mut cell = self.cells[index.cell];
-        if bit {
-            cell |= index.bit_mask;
-        } else {
-            cell &= !index.bit_mask;
-        }
-        self.cells[index.cell] = cell;
+        self.indexer.index(x, y)?.set(self.cells, bit);
         Ok(())
     }
 }
