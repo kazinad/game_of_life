@@ -1,8 +1,15 @@
 {
-    "editor.formatOnSave": true,
-    "editor.formatOnPaste": true,
-    // "lldb.adapterType": "native",
-    // "lldb.displayFormat": "auto",
-    "lldb.showDisassembly": "never",
-    // "lldb.dereferencePointers": true
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.tabSize": 4,
+  "editor.detectIndentation": false,
+  "editor.insertSpaces": true,
+  // "lldb.adapterType": "native",
+  // "lldb.displayFormat": "auto",
+  "lldb.showDisassembly": "never",
+  // "lldb.dereferencePointers": true
+  "extensions.showRecommendationsOnlyOnDemand": true,
+  "extensions.ignoreRecommendations": true,
 }
