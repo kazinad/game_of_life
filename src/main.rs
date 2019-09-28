@@ -25,13 +25,21 @@ fn main() -> Result<()> {
     };
     let mut screen = Screen::new();
     let mut frame_counter = FrameCounter::new();
+    let mut cells = 0usize;
     loop {
         universe.tick(|current| {
             screen.update(|buff| {
                 buff.push_str(frame_counter.as_string().as_str());
+                buff.push_str(format!(", {}‰ ", current.thousandths_set(cells)).as_str());
+                cells = 0;
                 buff.push('\n');
                 for (_, _, alive) in current.iter() {
-                    buff.push(if alive { '®' } else { ' ' });
+                    buff.push(if alive {
+                        cells += 1;
+                        '®'
+                    } else {
+                        ' '
+                    });
                 }
             });
         })?;

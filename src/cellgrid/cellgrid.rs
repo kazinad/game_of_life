@@ -54,4 +54,12 @@ impl CellGrid {
         self.set(x, y, bit)?;
         Ok(())
     }
+
+    pub fn cell_count(&self) -> usize {
+        self.indexer.width * self.indexer.height
+    }
+
+    pub fn thousandths_set(&self, count_set: usize) -> usize {
+        count_set * 1000 / self.cell_count()
+    }
 }
