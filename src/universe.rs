@@ -1,6 +1,7 @@
 use crate::cellgrid::{BoundsError, CellGrid, CellGridSlice};
 use core::cmp::max;
 use core::slice::Iter;
+use rayon::prelude::*;
 
 const CHANGES_HISTORY_LENGTH: usize = 5;
 
@@ -27,41 +28,26 @@ impl Universe {
     {
         let current = &self.current;
         let current_for_update = &self.current;
-        let mut slices = self.next.split_mut(num_cpus::get());
+        let mut slices = self.next.split_mut(num_cpus::get() - 1);
 
-        let scope = crossbeam::scope(|scope| {
-            let update_thread = scope.spawn(move |_| {
-                update(current_for_update);
-                Ok(SliceCalc(0usize, 0i32))
-            });
+        let scope_result = rayon::scope(move |scope| {
+            scope.spawn(move |_| update(current_for_update));
 
-            let mut threads: Vec<_> = slices
-                .iter_mut()
-                .map(|slice| scope.spawn(move |_| calc_slice(current, slice)))
-                .collect();
-
-            threads.push(update_thread);
-
-            threads
-                .into_iter()
-                .map(|thread| thread.join().unwrap())
+            slices
+                .par_iter_mut()
+                .map(move |slice| calc_slice(current, slice))
                 .collect::<Result<Vec<SliceCalc>, BoundsError>>()
         });
 
         std::mem::swap(&mut self.current, &mut self.next);
 
-        match scope {
-            Ok(slice_calcs) => {
-                let SliceCalc(cells, changes) = slice_calcs?.iter().sum_slice_calcs();
-                if self.is_stable(changes) {
-                    for _ in cells..max(self.limit, cells + 1) {
-                        self.current.set_random(true)?;
-                    }
-                }
-                Ok(())
+        let SliceCalc(cells, changes) = scope_result?.iter().sum_slice_calcs();
+        if self.is_stable(changes) {
+            for _ in cells..max(self.limit, cells + 1) {
+                self.current.set_random(true)?;
             }
-            Err(e) => panic!("{:?}", e),
         }
+        Ok(())
     }
 
     fn is_stable(&mut self, changes: i32) -> bool {
