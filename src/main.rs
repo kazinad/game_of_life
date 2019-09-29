@@ -16,6 +16,7 @@ mod screen;
 mod universe;
 use frame_counter::FrameCounter;
 use screen::Screen;
+use std::sync::mpsc;
 use universe::Universe;
 
 fn main() -> Result<()> {
@@ -27,7 +28,7 @@ fn main() -> Result<()> {
     let mut frame_counter = FrameCounter::new();
     let mut cells = 0usize;
     loop {
-        universe.tick(|current| {
+        universe.update(|current| {
             screen.update(|buff| {
                 buff.push_str(frame_counter.as_string().as_str());
                 buff.push_str(format!(", {}‰ ", current.thousandths_set(cells)).as_str());
@@ -42,7 +43,22 @@ fn main() -> Result<()> {
                     });
                 }
             });
-        })?;
-        frame_counter.step();
+        });
+
+        let universe = &mut universe;
+        let frame_counter = &mut frame_counter;
+        let screen = &screen;
+
+        rayon::scope(move |scope| {
+            let (tx, rx) = mpsc::channel();
+            scope.spawn(move |_| {
+                while rx.try_recv().is_err() {
+                    universe.tick().unwrap();
+                    frame_counter.step();
+                }
+            });
+            screen.print();
+            tx.send(false).unwrap();
+        });
     }
 }

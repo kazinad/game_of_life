@@ -3,7 +3,7 @@ use core::cmp::max;
 use core::slice::Iter;
 use rayon::prelude::*;
 
-const CHANGES_HISTORY_LENGTH: usize = 5;
+const CHANGES_HISTORY_LENGTH: usize = 10;
 
 pub struct Universe {
     current: CellGrid,
@@ -22,27 +22,27 @@ impl Universe {
         })
     }
 
-    pub fn tick<T>(&mut self, update: T) -> Result<(), BoundsError>
+    pub fn update<T>(&mut self, update: T)
     where
         T: FnOnce(&CellGrid) + std::marker::Send,
     {
+        update(&self.current);
+    }
+
+    pub fn tick(&mut self) -> Result<(), BoundsError> {
         let current = &self.current;
-        let current_for_update = &self.current;
-        let mut slices = self.next.split_mut(num_cpus::get() - 1);
+        let mut slices = self.next.split_mut(num_cpus::get());
 
-        let scope_result = rayon::scope(move |scope| {
-            scope.spawn(move |_| update(current_for_update));
-
-            slices
-                .par_iter_mut()
-                .map(move |slice| calc_slice(current, slice))
-                .collect::<Result<Vec<SliceCalc>, BoundsError>>()
-        });
+        let slice_calcs = slices
+            .par_iter_mut()
+            .map(move |slice| calc_slice(current, slice))
+            .collect::<Result<Vec<SliceCalc>, BoundsError>>();
 
         std::mem::swap(&mut self.current, &mut self.next);
 
-        let SliceCalc(cells, changes) = scope_result?.iter().sum_slice_calcs();
+        let SliceCalc(cells, changes) = slice_calcs?.iter().sum_slice_calcs();
         if self.is_stable(changes) {
+            self.changes_history.clear();
             for _ in cells..max(self.limit, cells + 1) {
                 self.current.set_random(true)?;
             }
