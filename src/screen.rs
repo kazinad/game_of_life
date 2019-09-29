@@ -2,7 +2,7 @@ pub struct Screen {
     buff: String,
 }
 
-static CLEAR_SCREEN: &str = "\x1B[3J";
+static CLEAR_SCREEN: &str = "\x1B[2J";
 static MOVE_CURSOR_TOP_LEFT: &str = "\x1B[H";
 
 impl Screen {
@@ -20,14 +20,14 @@ impl Screen {
         self.buff.clear();
         fill_buff(&mut self.buff);
         self.buff.push_str(MOVE_CURSOR_TOP_LEFT);
+    }
+
+    pub fn print(&self) {
         print!("{}", self.buff);
     }
 
     pub fn get_size() -> (usize, usize) {
-        if let Some((w, h)) = term_size::dimensions_stdout() {
-            (w, h)
-        } else {
-            (40, 20)
-        }
+        let (w, h) = crossterm::terminal().size().unwrap();
+        (w as usize, h as usize)
     }
 }
