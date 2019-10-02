@@ -25,12 +25,14 @@ fn main() -> Result<()> {
         Universe::new(width, height - 1)?
     };
     let mut screen = Screen::new();
-    let mut frame_counter = FrameCounter::new();
+    let mut generations = FrameCounter::new("generations", "TPS");
+    let mut updates = FrameCounter::new("updates", "FPS");
     let mut cells = 0usize;
     loop {
         universe.update(|current| {
             screen.update(|buff| {
-                buff.push_str(frame_counter.as_string().as_str());
+                buff.push_str(generations.as_string().as_str());
+                buff.push_str(format!(", {}", updates.as_string()).as_str());
                 buff.push_str(format!(", {}‰ ", current.thousandths_set(cells)).as_str());
                 cells = 0;
                 buff.push('\n');
@@ -46,7 +48,7 @@ fn main() -> Result<()> {
         });
 
         let universe = &mut universe;
-        let frame_counter = &mut frame_counter;
+        let generations = &mut generations;
         let screen = &screen;
 
         rayon::scope(move |scope| {
@@ -54,11 +56,13 @@ fn main() -> Result<()> {
             scope.spawn(move |_| {
                 while rx.try_recv().is_err() {
                     universe.tick().unwrap();
-                    frame_counter.step();
+                    generations.step();
                 }
             });
             screen.print();
             tx.send(false).unwrap();
         });
+
+        updates.step();
     }
 }
